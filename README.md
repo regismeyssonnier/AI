@@ -1,3 +1,3 @@
 # AI
 
-In AI, the concept of **`neural network`** with autograd i simplemented here in C++(CYDA, AVX), and in python.
+In AI, the concept of **`neural network`** with autograd is implemented here in C++(CUDA, AVX), and in python.
