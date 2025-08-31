@@ -656,7 +656,7 @@ public:
     int nonlin; // 0=lin, 1=relu, 2=sigmoid
     std::shared_ptr<UnityGPU> W; // [nin x nout]
     std::shared_ptr<UnityGPU> B; // [1 x nout]
-    
+    std::shared_ptr<UnityGPU> Y_cache;
 
     Layer(int nin_, int nout_, int nonlin_) : nin(nin_), nout(nout_), nonlin(nonlin_) {
         W = std::make_shared<UnityGPU>(nin * nout);
@@ -674,7 +674,16 @@ public:
 
     // Forward batch GPU
     std::shared_ptr<UnityGPU> forward_batch(std::shared_ptr<UnityGPU> X, int batch_size) {
-        auto Y = std::make_shared<UnityGPU>(batch_size * nout);
+        //auto Y = std::make_shared<UnityGPU>(batch_size * nout);
+        if (!Y_cache || Y_cache->size != batch_size * nout) {
+            Y_cache = std::make_shared<UnityGPU>(batch_size * nout);
+        }
+        else {
+            // reset gradients et valeurs
+            cudaMemset(Y_cache->data, 0, Y_cache->size * sizeof(float));
+            cudaMemset(Y_cache->grad, 0, Y_cache->size * sizeof(float));
+        }
+        auto Y = Y_cache; // alias
 
         dim3 threads(16, 16);
         dim3 blocks((nout + threads.x - 1) / threads.x, (batch_size + threads.y - 1) / threads.y);
@@ -1009,7 +1018,7 @@ void Training_GPU_Fast()
 
     
     float lr = 0.01;
-    int epochs = 2000;
+    int epochs = 20000;
     const int batch_size = 4; // tout le dataset en batch pour l'exemple
 
     // Préparer le batch input et target sur GPU
@@ -1053,8 +1062,8 @@ void Training_GPU_Fast()
         //mse_loss_gpu(y_pred, y_batch);
               
         y_pred->backward(); // propage les gradients sur tous les paramètres
-        for (auto& p : net.parameters())
-            p->_backward();
+        //for (auto& p : net.parameters())
+        //    p->_backward();
 
         // Update params
         for (auto& p : net.parameters())
